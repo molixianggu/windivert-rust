@@ -41,6 +41,7 @@ use std::{
     ffi::{c_void, CString},
     mem::MaybeUninit,
 };
+use std::os::windows::io::{AsRawHandle, RawHandle};
 
 use etherparse::{InternetSlice, SlicedPacket};
 
@@ -88,7 +89,7 @@ pub enum CloseAction {
 
 /// Main wrapper struct around windivert functionalities.
 pub struct WinDivert {
-    pub handle: HANDLE,
+    handle: HANDLE,
     layer: WinDivertLayer,
     tls_idx: u32,
 }
@@ -477,5 +478,11 @@ impl WinDivert {
             try_win!(CloseServiceHandle(manager));
         }
         Ok(())
+    }
+}
+
+impl AsRawHandle for WinDivert {
+    fn as_raw_handle(&self) -> RawHandle {
+        self.handle as RawHandle
     }
 }
