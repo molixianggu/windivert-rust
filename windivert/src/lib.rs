@@ -502,6 +502,11 @@ impl Packets {
 
 impl AsRawHandle for WinDivert {
     fn as_raw_handle(&self) -> RawHandle {
-        self.handle as RawHandle
+        (self.handle.0) as RawHandle
     }
+}
+
+#[test]
+fn run_test() {
+    println!("hello");
 }
