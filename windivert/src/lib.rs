@@ -488,7 +488,7 @@ impl Packets {
             packet_size: size,
             data_buffer: vec![0u8; count * size],
             address_buffer: vec![WINDIVERT_ADDRESS::default(); count],
-            address_length: (ADDR_SIZE * p) as u32,
+            address_length: (ADDR_SIZE * count) as u32,
             packet_length: 0,
         }
     }
