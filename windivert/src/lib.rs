@@ -329,7 +329,7 @@ impl WinDivert {
 
     pub fn read_ex(
         &self,
-        mut packets: Packets,
+        mut packets: &mut Packets,
     ) -> Result<Option<()>, WinDivertError> {
         let mut overlapped: OVERLAPPED = unsafe { std::mem::zeroed() };
         overlapped.hEvent = WinDivert::get_event(self.tls_idx)?;
