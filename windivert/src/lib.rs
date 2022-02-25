@@ -472,7 +472,7 @@ impl WinDivert {
     }
 }
 
-struct Packets {
+pub struct Packets {
     packet_count: usize,
     packet_size: usize,
     data_buffer: Vec<u8>,
