@@ -135,7 +135,7 @@ impl WinDivert {
         Ok(event)
     }
 
-    fn parse_packets(
+    pub fn parse_packets(
         &self,
         mut buffer: Vec<u8>,
         addr_buffer: Vec<WINDIVERT_ADDRESS>,
@@ -329,21 +329,14 @@ impl WinDivert {
 
     pub fn read_ex(
         &self,
-        buffer_size: usize,
-        packet_count: usize,
-    ) -> Result<Option<Vec<WinDivertPacket>>, WinDivertError> {
-        let mut packet_length = 0u32;
-        let mut buffer = vec![0u8; buffer_size * packet_count];
-
+        mut packets: Packets,
+    ) -> Result<Option<()>, WinDivertError> {
         let mut overlapped: OVERLAPPED = unsafe { std::mem::zeroed() };
         overlapped.hEvent = WinDivert::get_event(self.tls_idx)?;
 
         let mut ioctl: WINDIVERT_IOCTL_RECV = unsafe { std::mem::zeroed() };
-        let mut addr_buffer: Vec<WINDIVERT_ADDRESS> =
-            vec![WINDIVERT_ADDRESS::default(); packet_count];
-        let mut addr_len = (std::mem::size_of::<WINDIVERT_ADDRESS>() * packet_count) as u32;
-        ioctl.addr = &mut addr_buffer[0] as *mut _ as u64;
-        ioctl.addr_len_ptr = &mut addr_len as *mut u32 as u64;
+        ioctl.addr = &mut packets.address_buffer[0] as *mut _ as u64;
+        ioctl.addr_len_ptr = &mut packets.address_length as *mut u32 as u64;
         let res = unsafe {
             DeviceIoControl(
                 self.handle,
@@ -358,9 +351,9 @@ impl WinDivert {
                     .unwrap(),
                 &mut ioctl as *mut _ as *mut c_void,
                 std::mem::size_of::<WINDIVERT_IOCTL_RECV>() as u32,
-                buffer.as_mut_ptr() as *mut c_void,
-                buffer.len() as u32,
-                &mut packet_length,
+                packets.data_buffer.as_mut_ptr() as *mut c_void,
+                (packets.packet_size * packets.packet_count) as u32,
+                &mut packets.packet_length,
                 &mut overlapped,
             )
         };
@@ -370,9 +363,7 @@ impl WinDivert {
             return Ok(None);
         }
 
-        addr_buffer.truncate((addr_len / ADDR_SIZE as u32) as usize);
-        buffer.truncate(packet_length as usize);
-        Ok(Some(self.parse_packets(buffer, addr_buffer)))
+        Ok(Some(()))
     }
 
     /// Single packet send function.
@@ -478,6 +469,36 @@ impl WinDivert {
             try_win!(CloseServiceHandle(manager));
         }
         Ok(())
+    }
+}
+
+struct Packets {
+    packet_count: usize,
+    packet_size: usize,
+    data_buffer: Vec<u8>,
+    address_buffer: Vec<WINDIVERT_ADDRESS>,
+    address_length: u32,
+    packet_length: u32,
+}
+
+impl Packets {
+    pub fn new(count: usize, size: usize) -> Self {
+        Self {
+            packet_count: count,
+            packet_size: size,
+            data_buffer: vec![0u8; count * size],
+            address_buffer: vec![WINDIVERT_ADDRESS::default(); count],
+            address_length: (ADDR_SIZE * p) as u32,
+            packet_length: 0,
+        }
+    }
+
+    pub fn parse(mut self, divert: &WinDivert) -> Vec<WinDivertPacket> {
+        self.address_buffer.truncate((self.address_length / ADDR_SIZE as u32) as usize);
+        self.data_buffer.truncate(self.packet_length as usize);
+        addr.truncate((addr_len / ADDR_SIZE as u32) as usize);
+        buff.truncate(packet_length as usize);
+        divert.parse_packets(self.data_buffer, self.address_buffer)
     }
 }
 
