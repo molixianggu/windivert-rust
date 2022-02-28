@@ -472,7 +472,6 @@ impl WinDivert {
     }
 }
 
-#[derive(Debug)]
 pub struct Packets {
     pub packet_count: usize,
     pub packet_size: usize,
@@ -497,7 +496,7 @@ impl Packets {
     pub fn parse(&mut self, divert: &WinDivert) -> Vec<WinDivertPacket> {
         self.address_buffer.truncate((self.address_length / ADDR_SIZE as u32) as usize);
         self.data_buffer.truncate(self.packet_length as usize);
-        divert.parse_packets(self.data_buffer.clone(), self.address_buffer.clone())
+        divert.parse_packets(self.data_buffer.to_vec(), self.address_buffer.to_vec())
     }
 }
 
