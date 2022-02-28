@@ -472,13 +472,14 @@ impl WinDivert {
     }
 }
 
+#[derive(Debug)]
 pub struct Packets {
-    packet_count: usize,
-    packet_size: usize,
-    data_buffer: Vec<u8>,
-    address_buffer: Vec<WINDIVERT_ADDRESS>,
-    address_length: u32,
-    packet_length: u32,
+    pub packet_count: usize,
+    pub packet_size: usize,
+    pub data_buffer: Vec<u8>,
+    pub address_buffer: Vec<WINDIVERT_ADDRESS>,
+    pub address_length: u32,
+    pub packet_length: u32,
 }
 
 impl Packets {
