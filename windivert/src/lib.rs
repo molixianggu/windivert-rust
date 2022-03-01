@@ -44,6 +44,7 @@ use std::{
 use std::os::windows::io::{AsRawHandle, RawHandle};
 
 use etherparse::{InternetSlice, SlicedPacket};
+use windivert_sys::ioctl::WINDIVERT_IOCTL_SEND;
 
 macro_rules! try_win {
     ($expr:expr) => {{
@@ -406,11 +407,16 @@ impl WinDivert {
     pub fn send_ex<T: Into<WinDivertPacket>>(
         &self,
         mut data: Vec<T>,
+        handle: HANDLE,
     ) -> Result<u32, WinDivertError> {
         let packet_count = data.len();
         let mut injected_length = 0;
         let mut packet_buffer = Vec::with_capacity(data.len());
         let mut address_buffer: Vec<WINDIVERT_ADDRESS> = Vec::with_capacity(data.len());
+
+        let mut overlapped: OVERLAPPED = unsafe { std::mem::zeroed() };
+        overlapped.hEvent = handle;
+
         data.drain(..).for_each(|packet| {
             let mut packet: WinDivertPacket = packet.into();
             packet_buffer.append(&mut packet.data);
@@ -425,7 +431,8 @@ impl WinDivert {
                 0,
                 address_buffer.as_ptr(),
                 (std::mem::size_of::<WINDIVERT_ADDRESS>() * packet_count) as u32,
-                std::ptr::null_mut(),
+                &mut overlapped,
+                // std::ptr::null_mut(),
             ))
         };
         Ok(injected_length)
