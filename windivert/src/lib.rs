@@ -336,9 +336,6 @@ impl WinDivert {
             return Ok(None);
         }
 
-        let mut overlapped: OVERLAPPED = unsafe { std::mem::zeroed() };
-        overlapped.hEvent = packets.overlapped;
-
         packets.address_length = (ADDR_SIZE * packets.packet_count) as u32;
 
         let mut ioctl: WINDIVERT_IOCTL_RECV = unsafe { std::mem::zeroed() };
@@ -361,7 +358,7 @@ impl WinDivert {
                 packets.data_buffer.as_mut_ptr() as *mut c_void,
                 (packets.packet_size * packets.packet_count) as u32,
                 &mut packets.packet_length,
-                &mut overlapped,
+                &mut packets.read_overlapped,
             )
         };
         packets.flag = false;
@@ -407,15 +404,12 @@ impl WinDivert {
     pub fn send_ex<T: Into<WinDivertPacket>>(
         &self,
         mut data: Vec<T>,
-        handle: HANDLE,
+        mut overlapped: OVERLAPPED,
     ) -> Result<u32, WinDivertError> {
         let packet_count = data.len();
         let mut injected_length = 0;
         let mut packet_buffer = Vec::with_capacity(data.len());
         let mut address_buffer: Vec<WINDIVERT_ADDRESS> = Vec::with_capacity(data.len());
-
-        let mut overlapped: OVERLAPPED = unsafe { std::mem::zeroed() };
-        overlapped.hEvent = handle;
 
         data.drain(..).for_each(|packet| {
             let mut packet: WinDivertPacket = packet.into();
@@ -507,12 +501,20 @@ pub struct Packets {
     pub address_length: u32,
     pub packet_length: u32,
     pub flag: bool,
-    pub overlapped: HANDLE,
-    pub send: HANDLE,
+    pub read_overlapped: OVERLAPPED,
+    pub write_overlapped: OVERLAPPED,
 }
 
 impl Packets {
     pub fn new(count: usize, size: usize) -> Self {
+        let mut read_overlapped = OVERLAPPED::default();
+        read_overlapped.hEvent = unsafe {
+            CreateEventA(std::ptr::null_mut(), false, false, PSTR::default())
+        };
+        let mut write_overlapped = OVERLAPPED::default();
+        write_overlapped.hEvent = unsafe {
+            CreateEventA(std::ptr::null_mut(), false, false, PSTR::default())
+        };
         Self {
             packet_count: count,
             packet_size: size,
@@ -521,12 +523,8 @@ impl Packets {
             address_length: (ADDR_SIZE * count) as u32,
             packet_length: 0,
             flag: true,
-            overlapped: unsafe {
-                CreateEventA(std::ptr::null_mut(), false, false, PSTR::default())
-            },
-            send: unsafe {
-                CreateEventA(std::ptr::null_mut(), false, false, PSTR::default())
-            },
+            read_overlapped,
+            write_overlapped,
         }
     }
 }
