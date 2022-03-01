@@ -370,10 +370,10 @@ impl WinDivert {
 
     pub fn parse(&self, packets: &mut Packets, size: usize) -> Vec<WinDivertPacket> {
         let mut address_buffer = vec![WINDIVERT_ADDRESS::default(); (packets.address_length / ADDR_SIZE as u32) as usize];
-        address_buffer.copy_from_slice(&packets.address_buffer);
+        address_buffer.copy_from_slice(&packets.address_buffer[0..(packets.address_length / ADDR_SIZE as u32) as usize]);
 
         let mut data_buffer = vec![0u8; size];
-        data_buffer.copy_from_slice(&packets.data_buffer);
+        data_buffer.copy_from_slice(&packets.data_buffer[0..size]);
 
         self.parse_packets(data_buffer, address_buffer)
     }
