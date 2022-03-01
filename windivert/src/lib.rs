@@ -330,9 +330,10 @@ impl WinDivert {
     pub fn read_ex(
         &self,
         mut packets: &mut Packets,
+        mut overlapped: OVERLAPPED,
     ) -> Result<Option<()>, WinDivertError> {
-        let mut overlapped: OVERLAPPED = unsafe { std::mem::zeroed() };
-        overlapped.hEvent = WinDivert::get_event(self.tls_idx)?;
+        // let mut overlapped: OVERLAPPED = unsafe { std::mem::zeroed() };
+        // overlapped.hEvent = WinDivert::get_event(self.tls_idx)?;
 
         let mut ioctl: WINDIVERT_IOCTL_RECV = unsafe { std::mem::zeroed() };
         ioctl.addr = &mut packets.address_buffer[0] as *mut _ as u64;
