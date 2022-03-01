@@ -89,8 +89,8 @@ pub enum CloseAction {
 
 /// Main wrapper struct around windivert functionalities.
 pub struct WinDivert {
-    handle: HANDLE,
-    layer: WinDivertLayer,
+    pub handle: HANDLE,
+    pub layer: WinDivertLayer,
     tls_idx: u32,
 }
 
@@ -330,10 +330,11 @@ impl WinDivert {
     pub fn read_ex(
         &self,
         mut packets: &mut Packets,
-        mut overlapped: OVERLAPPED,
     ) -> Result<Option<()>, WinDivertError> {
-        // let mut overlapped: OVERLAPPED = unsafe { std::mem::zeroed() };
-        // overlapped.hEvent = WinDivert::get_event(self.tls_idx)?;
+        let mut overlapped: OVERLAPPED = unsafe { std::mem::zeroed() };
+        overlapped.hEvent = packets.overlapped;
+
+        packets.address_length = (ADDR_SIZE * packets.packet_count) as u32;
 
         let mut ioctl: WINDIVERT_IOCTL_RECV = unsafe { std::mem::zeroed() };
         ioctl.addr = &mut packets.address_buffer[0] as *mut _ as u64;
@@ -365,6 +366,16 @@ impl WinDivert {
         }
 
         Ok(Some(()))
+    }
+
+    pub fn parse(&self, packets: &mut Packets, size: usize) -> Vec<WinDivertPacket> {
+        let mut address_buffer = vec![WINDIVERT_ADDRESS::default(); (self.address_length / ADDR_SIZE as u32) as usize];
+        address_buffer.copy_from_slice(&packets.address_buffer[..address_buffer.len()]);
+
+        let mut data_buffer = vec![0u8; size];
+        data_buffer.copy_from_slice(&packets.data_buffer[..size]);
+
+        self.parse_packets(data_buffer, address_buffer)
     }
 
     /// Single packet send function.
@@ -480,6 +491,8 @@ pub struct Packets {
     pub address_buffer: Vec<WINDIVERT_ADDRESS>,
     pub address_length: u32,
     pub packet_length: u32,
+    pub flag: bool,
+    pub overlapped: HANDLE,
 }
 
 impl Packets {
@@ -491,13 +504,11 @@ impl Packets {
             address_buffer: vec![WINDIVERT_ADDRESS::default(); count],
             address_length: (ADDR_SIZE * count) as u32,
             packet_length: 0,
+            flag: true,
+            overlapped: unsafe {
+                CreateEventA(std::ptr::null_mut(), false, false, PSTR::default())
+            },
         }
-    }
-
-    pub fn parse(&mut self, divert: &WinDivert) -> Vec<WinDivertPacket> {
-        self.address_buffer.truncate((self.address_length / ADDR_SIZE as u32) as usize);
-        self.data_buffer.truncate(self.packet_length as usize);
-        divert.parse_packets(self.data_buffer.to_vec(), self.address_buffer.to_vec())
     }
 }
 
@@ -509,5 +520,15 @@ impl AsRawHandle for WinDivert {
 
 #[test]
 fn run_test() {
+    // 1205390
+    println!("code = {}", IOControlCode::CreateIOControlCode(
+        FILE_DEVICE_NETWORK as u16,
+        0x923,
+        IOControlAccessMode::Read,
+        IOControlBufferingMethod::DirectOutput,
+    )
+        .unwrap()
+        .ControlCode()
+        .unwrap());
     println!("hello");
 }
