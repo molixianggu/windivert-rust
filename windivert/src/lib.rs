@@ -331,6 +331,10 @@ impl WinDivert {
         &self,
         mut packets: &mut Packets,
     ) -> Result<Option<()>, WinDivertError> {
+        if !packets.flag {
+            return Ok(None);
+        }
+
         let mut overlapped: OVERLAPPED = unsafe { std::mem::zeroed() };
         overlapped.hEvent = packets.overlapped;
 
@@ -359,6 +363,8 @@ impl WinDivert {
                 &mut overlapped,
             )
         };
+        packets.flag = false;
+
         if !res.as_bool()
             && std::io::Error::last_os_error().raw_os_error().unwrap() as u32 == ERROR_IO_PENDING
         {
@@ -374,6 +380,8 @@ impl WinDivert {
 
         let mut data_buffer = vec![0u8; size];
         data_buffer.copy_from_slice(&packets.data_buffer[0..size]);
+
+        packets.flag = true;
 
         self.parse_packets(data_buffer, address_buffer)
     }
