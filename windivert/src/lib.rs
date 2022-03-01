@@ -508,6 +508,7 @@ pub struct Packets {
     pub packet_length: u32,
     pub flag: bool,
     pub overlapped: HANDLE,
+    pub send: HANDLE,
 }
 
 impl Packets {
@@ -521,6 +522,9 @@ impl Packets {
             packet_length: 0,
             flag: true,
             overlapped: unsafe {
+                CreateEventA(std::ptr::null_mut(), false, false, PSTR::default())
+            },
+            send: unsafe {
                 CreateEventA(std::ptr::null_mut(), false, false, PSTR::default())
             },
         }
